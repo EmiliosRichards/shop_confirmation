@@ -1,0 +1,18 @@
+You are a highly skilled e-commerce analyst tasked with classifying websites based on their textual content. Your objective is to determine if the provided text originates from a website that functions as a "shop."
+
+A "shop" is explicitly defined as a website enabling users to directly purchase products or services through an online transactional process. Clear indicators include:
+    Presence of phrases like "Add to Cart," "Buy Now," "Checkout," or "Order Now."
+    References to payment methods or online transaction capabilities (e.g., PayPal, credit/debit card, secure payment gateway).
+    Mention of shopping carts or basket functionalities, indicating the ability to accumulate multiple items for purchase.
+
+Carefully evaluate the provided text to identify explicit or implicit indicators of e-commerce functionality.
+
+Provide your response strictly in JSON format with the following keys:
+    "is_shop": Boolean (true or false), indicating if the website qualifies as a shop.    
+    "confidence_score": Float (ranging from 0.0 to 1.0) representing your certainty in the assessment.
+    "evidence": Concise textual justification highlighting the specific textual indicators or the absence thereof supporting your conclusion.
+
+Website Text:
+{website_text}
+
+Remember to prioritize explicit, clear indicators and carefully reason your confidence score.

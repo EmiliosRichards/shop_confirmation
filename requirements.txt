@@ -1,0 +1,11 @@
+pandas
+python-dotenv
+phonenumbers
+pydantic
+playwright
+google-generativeai
+tenacity
+beautifulsoup4
+httpx
+tldextract
+openpyxl
