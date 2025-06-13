@@ -1,3 +1,9 @@
 /.env
 /.venv
 /output_data
+__pycache__/
+*.pyc
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+# VS Code settings
+.vscode/

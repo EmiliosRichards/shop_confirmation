@@ -58,7 +58,7 @@ def setup_logging(
     if log_file_path:
         try:
             # Use RotatingFileHandler for log rotation
-            max_bytes = 10 * 1024 * 1024  # 10 MB per log file
+            max_bytes = 10 * 1024 * 1024  # 50 MB per log file
             backup_count = 5  # Keep up to 5 backup log files
             
             file_handler = RotatingFileHandler(

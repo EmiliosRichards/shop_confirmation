@@ -13,6 +13,7 @@ This module is responsible for:
 import csv # For smart CSV reading
 import logging
 import uuid # For RunID
+import os
 from typing import Optional, List, Dict, Any, Union, Iterable
 
 import pandas as pd
@@ -172,7 +173,6 @@ def load_and_preprocess_data(
                     try:
                         header_row_values = next(rows_iter)
                         header = [str(cell.value) if cell.value is not None else '' for cell in header_row_values]
-                        logger.info(f"Excel header read: {header}")
                     except StopIteration: # Handles empty sheet
                         logger.warning(f"Excel file {file_path} seems empty (no header row found).")
                         # header will remain None, data_rows empty.
@@ -210,13 +210,14 @@ def load_and_preprocess_data(
                 # df = pd.DataFrame(data_rows) # Fallback if header is somehow None but data exists
 
             elif file_path.endswith('.csv'):
+                logger.info(f"Attempting to open CSV file: {file_path}")
+                logger.info(f"File exists: {os.path.exists(file_path)}")
                 with open(file_path, mode='r', encoding='utf-8', newline='') as csvfile:
-                    reader = csv.DictReader(csvfile)
+                    reader = csv.DictReader(csvfile, delimiter='\t')
 
                     # 1. Read header
                     try:
                         header = list(reader.fieldnames) if reader.fieldnames else None
-                        logger.info(f"CSV header read: {header}")
                     except StopIteration: # Handles empty CSV
                         logger.warning(f"CSV file {file_path} seems empty (no header row).")
                         return pd.DataFrame() # Return empty DataFrame
@@ -255,7 +256,7 @@ def load_and_preprocess_data(
             logger.info(f"Using standard pandas read. Pandas skiprows argument: {pandas_skiprows_arg}, nrows: {nrows_val}")
             # keep_default_na=False and na_filter=False to prevent pandas from interpreting empty strings as NaN
             if file_path.endswith('.csv'):
-                df = pd.read_csv(file_path, header=0, skiprows=pandas_skiprows_arg, nrows=nrows_val, keep_default_na=False, na_filter=False)
+                df = pd.read_csv(file_path, header=0, skiprows=pandas_skiprows_arg, nrows=nrows_val, keep_default_na=False, na_filter=False, sep='\t')
             elif file_path.endswith(('.xls', '.xlsx')):
                 df = pd.read_excel(file_path, header=0, skiprows=pandas_skiprows_arg, nrows=nrows_val, keep_default_na=False, na_filter=False)
             else:

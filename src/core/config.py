@@ -178,6 +178,11 @@ class AppConfig:
     }
 
     def __init__(self):
+        # Add new profile for movepay
+        self.INPUT_COLUMN_PROFILES["movepay_profile"] = {
+            "firma": "CompanyName",
+            "url": "GivenURL",
+        }
         """
         Initializes the AppConfig instance.
 
@@ -305,7 +310,7 @@ class AppConfig:
 
         # --- Data Handling & Input Profiling ---
         self.input_excel_file_path: str = os.getenv('INPUT_EXCEL_FILE_PATH', 'data_to_be_inputed.xlsx')  # Relative to project root
-        self.input_file_profile_name: str = os.getenv("INPUT_FILE_PROFILE_NAME", "default")
+        self.input_file_profile_name: str = os.getenv("INPUT_FILE_PROFILE_NAME", "movepay_profile")
         self.output_excel_file_name_template: str = os.getenv('OUTPUT_EXCEL_FILE_NAME_TEMPLATE', 'Pipeline_Summary_Report_{run_id}.xlsx')
         self.PROSPECT_ANALYSIS_CSV_FILENAME_TEMPLATE: str = os.getenv('PROSPECT_ANALYSIS_CSV_FILENAME_TEMPLATE', 'ProspectAnalysisReport_{run_id}.csv')
         self.PATH_TO_GOLDEN_PARTNERS_DATA: str = os.getenv('PATH_TO_GOLDEN_PARTNERS_DATA', 'data/kunden_golden_standard.xlsx')
