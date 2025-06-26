@@ -174,6 +174,16 @@ class AppConfig:
             "url": "GivenURL",
             "beschreibung": "Description",
             "kategorie": "Industry"
+        },
+        "hochbau_profile": {
+            "Name": "CompanyName",
+            "Address": "Address",
+            "Zip": "Zip",
+            "City": "City",
+            "Phone": "Phone",
+            "Fax": "Fax",
+            "E-Mail": "Email",
+            "URL": "GivenURL"
         }
     }
 
@@ -241,9 +251,7 @@ class AppConfig:
         # --- LLM Configuration ---
         self.gemini_api_key: Optional[str] = os.getenv('GEMINI_API_KEY')
         self.llm_model_name: str = os.getenv('LLM_MODEL_NAME', 'gemini-1.5-pro-latest')  # Default to a capable model
-        self.llm_model_name_sales_insights: str = os.getenv('LLM_MODEL_NAME_SALES_INSIGHTS', 'gemini-1.5-pro-preview-06-05')
         self.llm_temperature_default: float = float(os.getenv('LLM_TEMPERATURE_DEFAULT', '0.3'))
-        self.llm_temperature_sales_insights: float = float(os.getenv('LLM_TEMPERATURE_SALES_INSIGHTS', '0.5'))
         self.llm_max_tokens: int = int(os.getenv('LLM_MAX_TOKENS', '3000'))  # Updated default
         self.llm_chunk_processor_max_tokens: int = int(os.getenv('LLM_CHUNK_PROCESSOR_MAX_TOKENS', '4096'))
         self.llm_max_chunks_per_url: int = int(os.getenv('LLM_MAX_CHUNKS_PER_URL', '5'))
@@ -297,11 +305,7 @@ class AppConfig:
         self.prompt_path_summarization: str = get_clean_path('PROMPT_PATH_SUMMARIZATION', 'prompts/summarization_prompt.txt')
         self.extraction_profile: str = os.getenv('EXTRACTION_PROFILE', "minimal")
         self.prompt_path_homepage_context: str = get_clean_path('PROMPT_PATH_HOMEPAGE_CONTEXT', 'prompts/homepage_context_prompt.txt')
-        self.PROMPT_PATH_WEBSITE_SUMMARIZER: str = get_clean_path('PROMPT_PATH_WEBSITE_SUMMARIZER', 'prompts/website_summarizer_prompt.txt')
-        self.PROMPT_PATH_ATTRIBUTE_EXTRACTOR: str = get_clean_path('PROMPT_PATH_ATTRIBUTE_EXTRACTOR', 'prompts/attribute_extractor_prompt.txt')
         self.LLM_MAX_INPUT_CHARS_FOR_SUMMARY: int = int(os.getenv('LLM_MAX_INPUT_CHARS_FOR_SUMMARY', '40000'))
-        self.PROMPT_PATH_COMPARISON_SALES_LINE: str = get_clean_path('PROMPT_PATH_COMPARISON_SALES_LINE', 'prompts/comparison_sales_line_prompt.txt')
-        self.MAX_GOLDEN_PARTNERS_IN_PROMPT: int = int(os.getenv('MAX_GOLDEN_PARTNERS_IN_PROMPT', '10'))
  
         # --- URL Probing Configuration ---
         url_probing_tlds_str: str = os.getenv('URL_PROBING_TLDS', 'de,com,at,ch')
@@ -311,8 +315,8 @@ class AppConfig:
         # --- Data Handling & Input Profiling ---
         self.input_excel_file_path: str = os.getenv('INPUT_EXCEL_FILE_PATH', 'data_to_be_inputed.xlsx')  # Relative to project root
         self.input_file_profile_name: str = os.getenv("INPUT_FILE_PROFILE_NAME", "movepay_profile")
+        self.csv_delimiter: str = os.getenv("CSV_DELIMITER", ";")
         self.output_excel_file_name_template: str = os.getenv('OUTPUT_EXCEL_FILE_NAME_TEMPLATE', 'Pipeline_Summary_Report_{run_id}.xlsx')
-        self.PROSPECT_ANALYSIS_CSV_FILENAME_TEMPLATE: str = os.getenv('PROSPECT_ANALYSIS_CSV_FILENAME_TEMPLATE', 'ProspectAnalysisReport_{run_id}.csv')
         self.PATH_TO_GOLDEN_PARTNERS_DATA: str = os.getenv('PATH_TO_GOLDEN_PARTNERS_DATA', 'data/kunden_golden_standard.xlsx')
 
         # --- Row Processing Range Configuration ---
@@ -367,13 +371,41 @@ class AppConfig:
         self.console_log_level: str = os.getenv('CONSOLE_LOG_LEVEL', 'WARNING').upper()
 
         # --- Pipeline Execution Configuration ---
-        self.pipeline_mode: str = os.getenv('PIPELINE_MODE', 'full_analysis')
+        self.pipeline_mode: str = os.getenv('PIPELINE_MODE', 'hochbau_detection')
 
-        # --- Shop Detection Mode Settings ---
-        shop_detection_keywords_str: str = os.getenv('SHOP_DETECTION_TARGET_KEYWORDS', 'products,shop,store,buy,cart,checkout,pricing,plans')
-        self.shop_detection_target_keywords: List[str] = [kw.strip().lower() for kw in shop_detection_keywords_str.split(',') if kw.strip()]
-        self.prompt_path_shop_detection: str = get_clean_path('PROMPT_PATH_SHOP_DETECTION', 'prompts/shop_detection_prompt.txt')
-        self.shop_detection_output_filename_template: str = os.getenv('SHOP_DETECTION_OUTPUT_FILENAME_TEMPLATE', 'Shop_Detection_Report_{run_id}.csv')
+        # --- Classification Profiles ---
+        self.CLASSIFICATION_PROFILES = {
+            "shop_detection": {
+                "prompt_path": get_clean_path('PROMPT_PATH_SHOP_DETECTION', 'prompts/shop_detection_prompt.txt'),
+                "output_columns": {
+                    "is_shop": "is_shop",
+                    "confidence": "is_shop_confidence",
+                    "evidence": "is_shop_evidence"
+                },
+                "target_keywords": [kw.strip().lower() for kw in os.getenv('SHOP_DETECTION_TARGET_KEYWORDS', 'products,shop,store,buy,cart,checkout,pricing,plans').split(',') if kw.strip()],
+                "output_filename_template": os.getenv('SHOP_DETECTION_OUTPUT_FILENAME_TEMPLATE', 'Shop_Detection_Report_{run_id}.csv')
+            },
+            "hochbau_detection": {
+                "prompt_path": get_clean_path('PROMPT_PATH_HOCHBAU_DETECTION', 'prompts/hochbau_detection_prompt.txt'),
+                "output_columns": {
+                    "is_hochbau": "is_hochbau",
+                    "confidence_score": "hochbau_confidence",
+                    "evidence": "hochbau_evidence"
+                },
+                "target_keywords": [kw.strip().lower() for kw in os.getenv('HOCHBAU_DETECTION_TARGET_KEYWORDS', 'hochbau,tiefbau,bauunternehmen,baugesellschaft,bau,architektur,wohnbau,gewerbebau,industriebau').split(',') if kw.strip()],
+                "output_filename_template": os.getenv('HOCHBAU_DETECTION_OUTPUT_FILENAME_TEMPLATE', 'Hochbau_Detection_Report_{run_id}.csv')
+            },
+            "exclusion_detection": {
+                "prompt_path": get_clean_path('PROMPT_PATH_EXCLUSION_DETECTION', 'prompts/exclusion_detection_prompt.txt'),
+                "output_columns": {
+                    "is_excluded": "is_excluded",
+                    "exclusion_category": "exclusion_category",
+                    "reason": "exclusion_reason"
+                },
+                "target_keywords": [kw.strip().lower() for kw in os.getenv('EXCLUSION_DETECTION_TARGET_KEYWORDS', 'about,company,services,products,solutions,team,mission,imprint,impressum,kontakt,contact').split(',') if kw.strip()],
+                "output_filename_template": os.getenv('EXCLUSION_DETECTION_OUTPUT_FILENAME_TEMPLATE', 'Exclusion_Detection_Report_{run_id}.csv')
+            }
+        }
 
         # --- Page Type Classification Keywords ---
         page_type_about_str: str = os.getenv('PAGE_TYPE_KEYWORDS_ABOUT', 'about,about-us,company,profile,mission,vision,team')

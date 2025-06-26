@@ -213,9 +213,9 @@ def load_and_preprocess_data(
                 logger.info(f"Attempting to open CSV file: {file_path}")
                 logger.info(f"File exists: {os.path.exists(file_path)}")
                 with open(file_path, mode='r', encoding='utf-8', newline='') as csvfile:
-                    reader = csv.DictReader(csvfile, delimiter='\t')
-
-                    # 1. Read header
+                    reader = csv.DictReader(csvfile, delimiter=current_config_instance.csv_delimiter)
+ 
+                     # 1. Read header
                     try:
                         header = list(reader.fieldnames) if reader.fieldnames else None
                     except StopIteration: # Handles empty CSV
@@ -256,7 +256,7 @@ def load_and_preprocess_data(
             logger.info(f"Using standard pandas read. Pandas skiprows argument: {pandas_skiprows_arg}, nrows: {nrows_val}")
             # keep_default_na=False and na_filter=False to prevent pandas from interpreting empty strings as NaN
             if file_path.endswith('.csv'):
-                df = pd.read_csv(file_path, header=0, skiprows=pandas_skiprows_arg, nrows=nrows_val, keep_default_na=False, na_filter=False, sep='\t')
+                df = pd.read_csv(file_path, header=0, skiprows=pandas_skiprows_arg, nrows=nrows_val, keep_default_na=False, na_filter=False, sep=current_config_instance.csv_delimiter)
             elif file_path.endswith(('.xls', '.xlsx')):
                 df = pd.read_excel(file_path, header=0, skiprows=pandas_skiprows_arg, nrows=nrows_val, keep_default_na=False, na_filter=False)
             else:
