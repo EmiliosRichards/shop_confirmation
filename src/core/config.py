@@ -371,7 +371,7 @@ class AppConfig:
         self.console_log_level: str = os.getenv('CONSOLE_LOG_LEVEL', 'WARNING').upper()
 
         # --- Pipeline Execution Configuration ---
-        self.pipeline_mode: str = os.getenv('PIPELINE_MODE', 'hochbau_detection')
+        self.pipeline_mode: str = os.getenv('PIPELINE_MODE', 'two_stage_classification')
 
         # --- Classification Profiles ---
         self.CLASSIFICATION_PROFILES = {
@@ -404,6 +404,17 @@ class AppConfig:
                 },
                 "target_keywords": [kw.strip().lower() for kw in os.getenv('EXCLUSION_DETECTION_TARGET_KEYWORDS', 'about,company,services,products,solutions,team,mission,imprint,impressum,kontakt,contact').split(',') if kw.strip()],
                 "output_filename_template": os.getenv('EXCLUSION_DETECTION_OUTPUT_FILENAME_TEMPLATE', 'Exclusion_Detection_Report_{run_id}.csv')
+            },
+            "positive_criteria_detection": {
+                "prompt_path": get_clean_path('PROMPT_PATH_POSITIVE_CRITERIA_DETECTION', 'prompts/positive_criteria_prompt.txt'),
+                "output_columns": {
+                    "meets_criteria": "meets_criteria",
+                    "matching_category": "matching_category",
+                    "matching_evidence": "matching_evidence",
+                    "primary_business_focus": "primary_business_focus"
+                },
+                "target_keywords": [kw.strip().lower() for kw in os.getenv('POSITIVE_CRITERIA_DETECTION_TARGET_KEYWORDS', 'about,company,services,products,solutions,team,mission,imprint,impressum,kontakt,contact').split(',') if kw.strip()],
+                "output_filename_template": os.getenv('POSITIVE_CRITERIA_DETECTION_OUTPUT_FILENAME_TEMPLATE', 'Positive_Criteria_Report_{run_id}.csv')
             }
         }
 

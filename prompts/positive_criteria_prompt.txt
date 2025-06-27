@@ -1,0 +1,33 @@
+You are an expert analyst specializing in German industrial and technology sectors ("Mittelstand"). Your task is to determine if a company is a good potential fit based on a detailed list of positive criteria.
+
+Carefully review the provided website text and determine if the company's primary business aligns with the **Desired Criteria** below.
+
+**Desired Criteria:**
+
+***Industries / Sectors (Branchen/Industrien):***
+- Sondermaschinenbau, Maschinenbau allgemein, Lebensmitteltechnik, Verpackungsmaschinen, Robotik, Automatisierungstechnik, Anlagenbau, Fördertechnik, Abfülltechnik, Produktionslinienhersteller, Prozesstechnik, Mechatronik, Medizintechnik
+
+***Activities (Tätigkeitsbereiche):***
+- Konstruktion, Entwicklung, Prototypenbau, Versuchsbau, Instandhaltung, Retrofit, Engineering-Dienstleister, OEM-Zulieferer, Systemintegratoren, Automatisierungsplanung, Sonderlösungen
+
+***Technologies & Processes (Technologien & Fertigungsverfahren):***
+- Additive Fertigung, 3D-Druck, Rapid Prototyping, CAD/CAM, CNC-Fertigung, Kunststoffverarbeitung, Metallverarbeitung, Leichtbau
+
+***Product Types / Solutions (Produkttypen / Lösungen):***
+- Greifer, Robotergelenke, Halterungen, Vorrichtungen, Maschinenteile, Funktionsteile, Ersatzteile, Prüfmittel, Formeinsätze, Kleinserien-Bauteile, Montagehilfen
+
+**Your Task:**
+Analyze the website text and respond in a strict JSON format. Your entire response must be only the JSON object.
+
+**JSON Output Structure:**
+{{
+  "meets_criteria": "Yes" or "No",
+  "matching_category": "If 'Yes', specify the primary category from the list that the company fits into (e.g., 'Industries', 'Activities', 'Technologies', 'Product Types'). Otherwise, provide 'N/A'.",
+  "matching_evidence": "Provide a brief, one-sentence explanation for your decision, citing specific evidence from the text that matches the desired criteria.",
+  "primary_business_focus": "In a few words, describe the company's main business focus based on the text."
+}}
+
+**Website Content:**
+---
+{website_text}
+---

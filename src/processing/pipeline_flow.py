@@ -32,49 +32,37 @@ def _run_classification_flow(
     app_config: AppConfig,
     gemini_client: GeminiClient,
     run_output_dir: str,
-    globally_processed_urls: Set[str],
     log_identifier: str,
     index: Any,
     company_name_str: str,
-    classification_profile: Dict[str, Any]
+    classification_profile: Dict[str, Any],
+    scraped_text: Optional[str] = None
 ) -> Tuple[Dict[str, Any], Optional[str]]:
     """
     Executes a generic classification flow for a single row.
+    If scraped_text is provided, it skips the scraping step.
     """
-    results = {
-        "scraper_status": "Not_Run",
-    }
+    results = {}
     output_columns = classification_profile.get("output_columns", {})
     for key in output_columns.values():
         results[key] = ""
 
-    target_keywords = classification_profile.get("target_keywords", [])
-    logger.info(f"{log_identifier} Starting classification scraping for: {processed_url} with keywords: {target_keywords}")
-    
-    _, scraper_status, _, collected_summary_text = asyncio.run(
-        scrape_website(
-            processed_url,
-            run_output_dir,
-            company_name_str,
-            globally_processed_urls,
-            index,
-            target_keywords=target_keywords,
-        )
-    )
-    results["scraper_status"] = scraper_status
+    if scraped_text is None:
+        # This path is for single-stage modes. It will be removed from the two-stage flow.
+        # The scraping logic will be handled directly in the main loop for two-stage.
+        # This is a simplification for the refactor.
+        logger.error("Scraping should be handled before calling _run_classification_flow in new design.")
+        return results, "Error_Scraping_Not_Done"
 
-    if scraper_status != "Success" or not collected_summary_text:
-        logger.warning(f"{log_identifier} Scraping failed or no text collected for classification. Status: {scraper_status}")
-        return results, scraper_status
 
-    logger.info(f"{log_identifier} Collected {len(collected_summary_text)} characters for classification.")
+    logger.info(f"{log_identifier} Using pre-scraped text for classification.")
 
     llm_file_prefix = sanitize_filename_component(
-        f"Row{index}_{company_name_str[:20]}_classify", max_len=50
+        f"Row{index}_{company_name_str[:20]}_{classification_profile.get('prompt_path', 'classify')}", max_len=50
     )
     
     classification_result = perform_classification(
-        scraped_text=collected_summary_text,
+        scraped_text=scraped_text,
         gemini_client=gemini_client,
         app_config=app_config,
         original_url=str(row_series.get("GivenURL", "")),
@@ -87,13 +75,13 @@ def _run_classification_flow(
     if classification_result:
         for key, col_name in output_columns.items():
             results[col_name] = classification_result.get(key, "")
-        logger.info(f"{log_identifier} Classification successful.")
+        logger.info(f"{log_identifier} Classification successful for profile: {classification_profile.get('prompt_path')}")
     else:
-        logger.warning(f"{log_identifier} Classification LLM call failed.")
+        logger.warning(f"{log_identifier} Classification LLM call failed for profile: {classification_profile.get('prompt_path')}")
         for col_name in output_columns.values():
             results[col_name] = "Error"
 
-    return results, scraper_status
+    return results, "Success" # Scraper status is handled outside now
 
 
 def execute_pipeline_flow(
@@ -155,47 +143,80 @@ def execute_pipeline_flow(
         try:
             assert processed_url is not None
 
-            if app_config.pipeline_mode in app_config.CLASSIFICATION_PROFILES:
+            # Scrape website once for all classification modes
+            target_keywords = app_config.CLASSIFICATION_PROFILES.get(app_config.pipeline_mode, {}).get("target_keywords", [])
+            if app_config.pipeline_mode == "two_stage_classification":
+                # For two-stage, use keywords from both profiles
+                exclusion_keywords = app_config.CLASSIFICATION_PROFILES["exclusion_detection"].get("target_keywords", [])
+                positive_keywords = app_config.CLASSIFICATION_PROFILES["positive_criteria_detection"].get("target_keywords", [])
+                target_keywords = list(set(exclusion_keywords + positive_keywords))
+
+            _, scraper_status, _, collected_summary_text = asyncio.run(
+                scrape_website(
+                    processed_url, run_output_dir, company_name_str,
+                    globally_processed_urls, index, target_keywords=target_keywords
+                )
+            )
+            df.at[index, 'ScrapingStatus'] = scraper_status
+
+            if scraper_status != "Success" or not collected_summary_text:
+                logger.warning(f"{log_identifier} Scraping failed or no text collected. Status: {scraper_status}")
+                log_row_failure(
+                    failure_writer, index, company_name_str, given_url_original_str,
+                    f"Scraping_{scraper_status}", f"Scraping status: {scraper_status}",
+                    datetime.now().isoformat(), json.dumps({"processed_url": processed_url})
+                )
+                row_level_failure_counts[f"Scraping_{scraper_status}"] += 1
+                rows_failed_count += 1
+                continue
+
+            logger.info(f"{log_identifier} Collected {len(collected_summary_text)} characters for classification.")
+
+            if app_config.pipeline_mode == "two_stage_classification":
+                logger.info(f"{log_identifier} Pipeline mode: 'two_stage_classification'.")
+                
+                # Stage 1: Exclusion Detection
+                exclusion_profile = app_config.CLASSIFICATION_PROFILES["exclusion_detection"]
+                exclusion_result, _ = _run_classification_flow(
+                    processed_url=processed_url, row_series=row, app_config=app_config,
+                    gemini_client=gemini_client, run_output_dir=run_output_dir,
+                    log_identifier=log_identifier, index=index, company_name_str=company_name_str,
+                    classification_profile=exclusion_profile, scraped_text=collected_summary_text
+                )
+                if exclusion_result:
+                    for col, val in exclusion_result.items(): df.at[index, col] = val
+                
+                if exclusion_result.get("is_excluded", "Error").lower() == "yes":
+                    logger.info(f"{log_identifier} Company excluded. Skipping positive criteria check.")
+                    continue
+
+                # Stage 2: Positive Criteria Detection
+                logger.info(f"{log_identifier} Proceeding to positive criteria check.")
+                positive_profile = app_config.CLASSIFICATION_PROFILES["positive_criteria_detection"]
+                positive_result, _ = _run_classification_flow(
+                    processed_url=processed_url, row_series=row, app_config=app_config,
+                    gemini_client=gemini_client, run_output_dir=run_output_dir,
+                    log_identifier=log_identifier, index=index, company_name_str=company_name_str,
+                    classification_profile=positive_profile, scraped_text=collected_summary_text
+                )
+                if positive_result:
+                    for col, val in positive_result.items(): df.at[index, col] = val
+
+            elif app_config.pipeline_mode in app_config.CLASSIFICATION_PROFILES:
                 profile_name = app_config.pipeline_mode
                 classification_profile = app_config.CLASSIFICATION_PROFILES[profile_name]
-                logger.info(f"{log_identifier} Pipeline mode: '{profile_name}'. Running classification flow.")
+                logger.info(f"{log_identifier} Pipeline mode: '{profile_name}'.")
 
-                classification_result, scraper_status_optional = _run_classification_flow(
-                    processed_url=processed_url,
-                    row_series=row,
-                    app_config=app_config,
-                    gemini_client=gemini_client,
-                    run_output_dir=run_output_dir,
-                    globally_processed_urls=globally_processed_urls,
-                    log_identifier=log_identifier,
-                    index=index,
-                    company_name_str=company_name_str,
-                    classification_profile=classification_profile
+                classification_result, _ = _run_classification_flow(
+                    processed_url=processed_url, row_series=row, app_config=app_config,
+                    gemini_client=gemini_client, run_output_dir=run_output_dir,
+                    log_identifier=log_identifier, index=index, company_name_str=company_name_str,
+                    classification_profile=classification_profile, scraped_text=collected_summary_text
                 )
-
-                scraper_status = scraper_status_optional or "Classification_Flow_Error"
-                df.at[index, 'ScrapingStatus'] = scraper_status
-
                 if classification_result:
-                    for col_name, value in classification_result.items():
-                        if col_name != "scraper_status":
-                            df.at[index, col_name] = value
-                
-                if scraper_status != "Success":
-                    logger.warning(f"{log_identifier} Classification flow failed with scraper status: {scraper_status}")
-                    log_row_failure(
-                        failure_writer, index, company_name_str, given_url_original_str,
-                        f"Scraping_{scraper_status}",
-                        f"Classification scraper status: {scraper_status}", datetime.now().isoformat(),
-                        json.dumps({"processed_url": processed_url})
-                    )
-                    row_level_failure_counts[f"Scraping_{scraper_status}"] += 1
-                    rows_failed_count += 1
-                
-                logger.info(f"{log_identifier} Row {current_row_number_for_log} processing complete ({profile_name}).")
-
+                    for col, val in classification_result.items(): df.at[index, col] = val
             else:
-                logger.error(f"{log_identifier} Unknown pipeline mode '{app_config.pipeline_mode}'. No action taken.")
+                logger.error(f"{log_identifier} Unknown pipeline mode '{app_config.pipeline_mode}'.")
                 rows_failed_count += 1
 
         except Exception as e_row_processing:

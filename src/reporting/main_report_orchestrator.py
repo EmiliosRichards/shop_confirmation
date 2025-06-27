@@ -10,6 +10,7 @@ from src.core.config import AppConfig
 from src.reporting.shop_detection_reporter import generate_shop_detection_report
 from src.reporting.hochbau_detection_reporter import generate_hochbau_detection_report
 from src.reporting.exclusion_detection_reporter import generate_exclusion_detection_report
+from src.reporting.two_stage_classification_reporter import generate_two_stage_classification_report
 
 logger = logging.getLogger(__name__)
 
@@ -44,13 +45,21 @@ def generate_all_reports(
             run_output_dir=run_output_dir
         )
     elif app_config.pipeline_mode == "exclusion_detection":
-       logger.info("Executing exclusion_detection reporting pipeline.")
-       generate_exclusion_detection_report(
-           df=df,
-           app_config=app_config,
-           run_id=run_id,
-           run_output_dir=run_output_dir
-       )
+        logger.info("Executing exclusion_detection reporting pipeline.")
+        generate_exclusion_detection_report(
+            df=df,
+            app_config=app_config,
+            run_id=run_id,
+            run_output_dir=run_output_dir
+        )
+    elif app_config.pipeline_mode == "two_stage_classification":
+        logger.info("Executing two_stage_classification reporting pipeline.")
+        generate_two_stage_classification_report(
+            df=df,
+            app_config=app_config,
+            run_id=run_id,
+            run_output_dir=run_output_dir
+        )
     else:
         logger.warning(f"No specific reporter for pipeline_mode '{app_config.pipeline_mode}'. No report generated.")
 
