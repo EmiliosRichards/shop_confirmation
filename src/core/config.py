@@ -184,6 +184,16 @@ class AppConfig:
             "Fax": "Fax",
             "E-Mail": "Email",
             "URL": "GivenURL"
+        },
+        "mechanical_engineering_input": {
+            "Name": "CompanyName",
+            "Address": "Address",
+            "Zip": "Zip",
+            "City": "City",
+            "Phone": "Phone",
+            "Fax": "Fax",
+            "E-Mail": "Email",
+            "URL": "GivenURL"
         }
     }
 
@@ -383,7 +393,7 @@ class AppConfig:
                     "evidence": "is_shop_evidence"
                 },
                 "target_keywords": [kw.strip().lower() for kw in os.getenv('SHOP_DETECTION_TARGET_KEYWORDS', 'products,shop,store,buy,cart,checkout,pricing,plans').split(',') if kw.strip()],
-                "output_filename_template": os.getenv('SHOP_DETECTION_OUTPUT_FILENAME_TEMPLATE', 'Shop_Detection_Report_{run_id}.csv')
+                "output_filename_template": os.getenv('SHOP_DETECTION_OUTPUT_FILENAME_TEMPLATE', 'Shop_Detection_Report_{run_id}.xlsx')
             },
             "hochbau_detection": {
                 "prompt_path": get_clean_path('PROMPT_PATH_HOCHBAU_DETECTION', 'prompts/hochbau_detection_prompt.txt'),
@@ -393,7 +403,7 @@ class AppConfig:
                     "evidence": "hochbau_evidence"
                 },
                 "target_keywords": [kw.strip().lower() for kw in os.getenv('HOCHBAU_DETECTION_TARGET_KEYWORDS', 'hochbau,tiefbau,bauunternehmen,baugesellschaft,bau,architektur,wohnbau,gewerbebau,industriebau').split(',') if kw.strip()],
-                "output_filename_template": os.getenv('HOCHBAU_DETECTION_OUTPUT_FILENAME_TEMPLATE', 'Hochbau_Detection_Report_{run_id}.csv')
+                "output_filename_template": os.getenv('HOCHBAU_DETECTION_OUTPUT_FILENAME_TEMPLATE', 'Hochbau_Detection_Report_{run_id}.xlsx')
             },
             "exclusion_detection": {
                 "prompt_path": get_clean_path('PROMPT_PATH_EXCLUSION_DETECTION', 'prompts/exclusion_detection_prompt.txt'),
@@ -403,7 +413,7 @@ class AppConfig:
                     "reason": "exclusion_reason"
                 },
                 "target_keywords": [kw.strip().lower() for kw in os.getenv('EXCLUSION_DETECTION_TARGET_KEYWORDS', 'about,company,services,products,solutions,team,mission,imprint,impressum,kontakt,contact').split(',') if kw.strip()],
-                "output_filename_template": os.getenv('EXCLUSION_DETECTION_OUTPUT_FILENAME_TEMPLATE', 'Exclusion_Detection_Report_{run_id}.csv')
+                "output_filename_template": os.getenv('EXCLUSION_DETECTION_OUTPUT_FILENAME_TEMPLATE', 'Exclusion_Detection_Report_{run_id}.xlsx')
             },
             "positive_criteria_detection": {
                 "prompt_path": get_clean_path('PROMPT_PATH_POSITIVE_CRITERIA_DETECTION', 'prompts/positive_criteria_prompt.txt'),
@@ -414,7 +424,17 @@ class AppConfig:
                     "primary_business_focus": "primary_business_focus"
                 },
                 "target_keywords": [kw.strip().lower() for kw in os.getenv('POSITIVE_CRITERIA_DETECTION_TARGET_KEYWORDS', 'about,company,services,products,solutions,team,mission,imprint,impressum,kontakt,contact').split(',') if kw.strip()],
-                "output_filename_template": os.getenv('POSITIVE_CRITERIA_DETECTION_OUTPUT_FILENAME_TEMPLATE', 'Positive_Criteria_Report_{run_id}.csv')
+                "output_filename_template": os.getenv('TWO_STAGE_CLASSIFICATION_OUTPUT_FILENAME_TEMPLATE', 'Two_Stage_Classification_Report_{run_id}.xlsx')
+            },
+            "mechanical_engineering_detection": {
+                "prompt_path": get_clean_path('PROMPT_PATH_MECH_ENG_DETECTION', 'prompts/mechanical_engineering_prompt.txt'),
+                "output_columns": {
+                    "is_mech": "is_mech",
+                    "mech_reasoning": "mech_reasoning",
+                    "industry": "industry"
+                },
+                "target_keywords": [kw.strip().lower() for kw in os.getenv('MECH_ENG_DETECTION_TARGET_KEYWORDS', 'maschinenbau,anlagenbau,sonderanlagenbau,automation,automatisierung,robotik,steuerungstechnik,antriebstechnik,fördertechnik,produktionstechnik,fertigungstechnik,werkzeugbau,zerspanung,schweissen,montage,industrie,industrieanlagen').split(',') if kw.strip()],
+                "output_filename_template": os.getenv('MECH_ENG_DETECTION_OUTPUT_FILENAME_TEMPLATE', 'Mechanical_Engineering_Report_{run_id}.xlsx')
             }
         }
 
@@ -424,3 +444,8 @@ class AppConfig:
 
         page_type_product_service_str: str = os.getenv('PAGE_TYPE_KEYWORDS_PRODUCT_SERVICE', 'products,services,solutions,offerings,platform,features')
         self.page_type_keywords_product_service: List[str] = [kw.strip().lower() for kw in page_type_product_service_str.split(',') if kw.strip()]
+
+        # --- Slack Notifications ---
+        self.enable_slack_notifications: bool = os.getenv('ENABLE_SLACK_NOTIFICATIONS', 'False').lower() == 'true'
+        self.slack_bot_token: Optional[str] = os.getenv('SLACK_BOT_TOKEN')
+        self.slack_channel_id: Optional[str] = os.getenv('SLACK_CHANNEL_ID')
