@@ -20,29 +20,8 @@ import os
 from dotenv import load_dotenv
 from typing import List, Optional
 
-# Load environment variables from a .env file.
-# Attempts to load from paths relative to this file's location to support
-# execution from different project directory levels (e.g., src/core, src, project root).
-dotenv_path_1 = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '.env')  # Project_Root/.env
-dotenv_path_2 = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', '.env') # Workspace_Root/.env (if project is nested)
-dotenv_path_project_root = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), '.env') # Fallback for main_pipeline.py at project root
-
-loaded_env = False
-if os.path.exists(dotenv_path_1):
-    load_dotenv(dotenv_path_1)
-    loaded_env = True
-elif os.path.exists(dotenv_path_2):
-    load_dotenv(dotenv_path_2)
-    loaded_env = True
-elif os.path.exists(dotenv_path_project_root):
-    load_dotenv(dotenv_path_project_root)
-    loaded_env = True
-else:
-    print(
-        f"Warning: .env file not found at {dotenv_path_1}, {dotenv_path_2}, "
-        f"or {dotenv_path_project_root}. Using default configurations or "
-        "expecting environment variables to be set externally."
-    )
+# Environment variables are now loaded exclusively in the main_pipeline.py entry point.
+# This ensures a single, predictable source of configuration truth.
 
 
 class AppConfig:
@@ -194,7 +173,17 @@ class AppConfig:
             "Fax": "Fax",
             "E-Mail": "Email",
             "URL": "GivenURL"
-        }
+        },
+        "apollo_export": {
+            "Company": "CompanyName",
+            "Website": "GivenURL",
+            "SEO Description": "Description",
+            "Industry": "Industry",
+            "Company Street": "Address",
+            "Company City": "City",
+            "Company Postal Code": "Zip",
+            "Company Phone": "Phone"
+        },
     }
 
     def __init__(self):
@@ -429,9 +418,10 @@ class AppConfig:
             "mechanical_engineering_detection": {
                 "prompt_path": get_clean_path('PROMPT_PATH_MECH_ENG_DETECTION', 'prompts/mechanical_engineering_prompt.txt'),
                 "output_columns": {
-                    "is_mech": "is_mech",
-                    "mech_reasoning": "mech_reasoning",
-                    "industry": "industry"
+                    "is_relevant_industry": "is_relevant_industry",
+                    "is_very_good_prospect": "is_very_good_prospect",
+                    "reasoning": "reasoning",
+                    "primary_business_focus": "primary_business_focus"
                 },
                 "target_keywords": [kw.strip().lower() for kw in os.getenv('MECH_ENG_DETECTION_TARGET_KEYWORDS', 'maschinenbau,anlagenbau,sonderanlagenbau,automation,automatisierung,robotik,steuerungstechnik,antriebstechnik,fördertechnik,produktionstechnik,fertigungstechnik,werkzeugbau,zerspanung,schweissen,montage,industrie,industrieanlagen').split(',') if kw.strip()],
                 "output_filename_template": os.getenv('MECH_ENG_DETECTION_OUTPUT_FILENAME_TEMPLATE', 'Mechanical_Engineering_Report_{run_id}.xlsx')

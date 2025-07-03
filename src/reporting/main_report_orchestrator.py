@@ -2,6 +2,7 @@
 Orchestrates the generation of classification reports.
 """
 import pandas as pd
+import os
 import logging
 import time
 from typing import List, Dict, Any, Optional
@@ -78,7 +79,16 @@ def generate_all_reports(
     
     if app_config.enable_slack_notifications and report_path and app_config.slack_bot_token and app_config.slack_channel_id:
         logger.info("Sending Slack notification...")
-        message = f"Pipeline run `{run_id}` completed successfully. Report is attached."
+        message = (
+            f"Shop Confirmation System Pipeline Run Complete\n"
+            f"--------------------------------------------\n"
+            f"Mode: `{app_config.pipeline_mode}`\n"
+            f"Input File: `{os.path.basename(app_config.input_excel_file_path)}`\n"
+            f"Rows Processed: `{len(df)}`\n"
+            f"Run ID: `{run_id}`\n"
+            f"--------------------------------------------\n"
+            f"Report is attached."
+        )
         send_slack_notification(
             token=app_config.slack_bot_token,
             channel_id=app_config.slack_channel_id,

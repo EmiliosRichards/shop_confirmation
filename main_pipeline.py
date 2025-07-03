@@ -23,7 +23,10 @@ from src.reporting.metrics_manager import write_run_metrics
 from src.processing.pipeline_flow import execute_pipeline_flow
 from src.reporting.main_report_orchestrator import generate_all_reports
 
-load_dotenv()
+# Explicitly load the .env file from the project root to ensure consistency.
+# This is the single source of truth for environment-based configuration.
+dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
+load_dotenv(dotenv_path=dotenv_path)
 
 logger = logging.getLogger(__name__)
 app_config: AppConfig = AppConfig()
@@ -40,7 +43,7 @@ def main() -> None:
     run_id = generate_run_id()
     run_metrics: Dict[str, Any] = initialize_run_metrics(run_id)
 
-    run_output_dir, llm_context_dir, llm_requests_dir = setup_output_directories(app_config, run_id, BASE_FILE_PATH_FOR_RESOLVE)
+    run_output_dir, llm_context_dir, llm_requests_dir = setup_output_directories(app_config, run_id, BASE_FILE_PATH_FOR_RESOLVE, app_config.pipeline_mode)
 
     log_file_name = f"pipeline_run_{run_id}.log"
     log_file_path = os.path.join(run_output_dir, log_file_name)

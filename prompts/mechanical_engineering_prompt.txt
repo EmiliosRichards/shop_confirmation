@@ -1,61 +1,42 @@
-You are an expert analyst tasked with identifying German companies that operate within or for the Mechanical Engineering ("Maschinenbau") ecosystem.
+You are an expert analyst specializing in the German industrial and technology sectors ("Mittelstand"). Your task is to perform a two-step evaluation of a company based on the provided website text.
 
-**Objective:**
-Analyze the provided website text to determine if the company is related to the Mechanical Engineering field. Your goal is to cast a wide net, including direct manufacturers, suppliers, software providers, and service firms whose primary business is connected to this sector.
+**Step 1: Assess General Relevance**
 
-**Input:**
-- `original_url`: The URL of the company's website.
-- `scraped_text`: The text content scraped from the website.
+First, determine if the company shows a **reasonable connection or similarity** to any of the following **Target Industries**. The match does not need to be perfect, but the company's core activities should be related to one or more of these areas.
 
-**Analysis Steps:**
-1.  **Ecosystem Connection Check:** Read the text to understand the company's business. Does it manufacture machines? Does it supply parts *to* machine builders? Does it provide software or services *for* the engineering and manufacturing industry? If the company's products or services are primarily intended for the mechanical engineering sector, it should be classified as related.
-2.  **Keyword Analysis:** Look for keywords indicating a connection to the field, such as: `Maschinenbau`, `Anlagenbau`, `Automation`, `Robotik`, `Steuerungstechnik`, `Antriebstechnik`, `Fertigungstechnik`, `Werkzeugbau`, `Zerspanung`, `Industrie`, `Zulieferer`, `Industriebedarf`, `CAD`, `CAM`, `PLM`, `ERP für Fertigung`.
-3.  **General Industry Identification:** Based on the website's content, determine the company's overall industry. This should be a general classification (e.g., `Softwareentwicklung`, `Teilezulieferer`, `Sondermaschinenbau`, `Unternehmensberatung`).
+***Target Industries:***
+- Mechanical Engineering (Maschinenbau allgemein)
+- Medical Technology (Medizintechnik)
+- Food Technology (Lebensmitteltechnik)
+- Drone and Special Vehicle Construction (Drohnen- und Sonderfahrzeugbau)
+- Automation Technology / Plant Engineering (Automatisierungstechnik, Anlagenbau)
+- Sondermaschinenbau, Verpackungsmaschinen, Robotik, Fördertechnik, Abfülltechnik, Produktionslinienhersteller, Prozesstechnik, Mechatronik
+
+If the company is not related to any of these industries, your analysis for this company is complete.
+
+**Step 2: Evaluate Prospect Quality**
+
+If the company *is* related to one of the Target Industries, you must then evaluate it against the following **"Very Good Prospect" Criteria** to determine its quality.
+
+***"Very Good Prospect" Criteria:***
+- Startups in the technical sector (Startups im technischen Bereich)
+- Medium-sized machinery and plant manufacturers (Mittelständische Maschinen- und Anlagenbauer)
+- Large corporations in the industrial sector (Großunternehmen)
+- Companies actively looking for suppliers for components, assemblies, or entire products (Unternehmen die Lieferanten für Bauteile, Baugruppen oder das gesamte Produkt suchen)
+
+**Website Text for Analysis:**
+```
+{website_text}
+```
 
 **Output Format:**
-Respond with a single, minified JSON object. Do not include any text or formatting outside of this JSON object.
+Respond with a single, minified JSON object.
 
 **JSON Schema:**
 ```json
 {{
-  "is_mech": {{
-    "type": "string",
-    "description": "Is the company related to the Mechanical Engineering sector? Must be 'Yes' or 'No'."
-  }},
-  "mech_reasoning": {{
-    "type": "string",
-    "description": "A brief, one-sentence explanation for your 'is_mech' decision, based on the website's content. Cite specific services, products, or target markets mentioned."
-  }},
-  "industry": {{
-    "type": "string",
-    "description": "The company's general, overall industry (e.g., 'Softwareentwicklung', 'Teilezulieferer', 'Sondermaschinenbau')."
-  }}
+  "is_relevant_industry": "Yes" or "No",
+  "is_very_good_prospect": "If 'is_relevant_industry' is 'Yes', specify if the company also meets the 'Very Good Prospect' criteria: 'Yes' or 'No'. Otherwise, 'N/A'.",
+  "reasoning": "A brief, one-sentence explanation for your overall decision, citing specific evidence from the text.",
+  "primary_business_focus": "In a few words, describe the company's main business focus."
 }}
-```
-
-**Example 1 (Positive Match - Manufacturer):**
-*Input Text:* "Wir sind Ihr Partner für Sondermaschinenbau und Automatisierungstechnik. Unsere Ingenieure entwickeln und fertigen maßgeschneiderte Produktionsanlagen..."
-*Output:*
-```json
-{{"is_mech": "Yes", "mech_reasoning": "The website explicitly states they are specialists in 'Sondermaschinenbau' and 'Automatisierungstechnik', directly placing them in the field.", "industry": "Sondermaschinenbau"}}
-```
-
-**Example 2 (Positive Match - Supplier):**
-*Input Text:* "Wir liefern hochwertige Kugellager und Antriebsriemen für den Maschinenbau. Unser Katalog umfasst über 10.000 Normteile..."
-*Output:*
-```json
-{{"is_mech": "Yes", "mech_reasoning": "The company is a supplier of parts like bearings and belts specifically for the mechanical engineering sector.", "industry": "Teilezulieferer"}}
-```
-
-**Example 3 (Positive Match - Software):**
-*Input Text:* "Unsere CAD-Software ermöglicht Ingenieuren im Maschinenbau die effiziente Konstruktion von 3D-Modellen..."
-*Output:*
-```json
-{{"is_mech": "Yes", "mech_reasoning": "The company provides CAD software specifically targeted at engineers in the mechanical engineering field.", "industry": "Softwareentwicklung"}}
-```
-
-**Example 4 (Negative Match - Unrelated):**
-*Input Text:* "Willkommen in unserem Online-Shop für handgemachte Seifen und Kerzen. Jedes Stück ein Unikat..."
-*Output:*
-```json
-{{"is_mech": "No", "mech_reasoning": "The company sells consumer goods (soaps and candles) and has no stated connection to the mechanical engineering industry.", "industry": "Einzelhandel"}}

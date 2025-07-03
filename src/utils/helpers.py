@@ -95,7 +95,7 @@ def initialize_run_metrics(run_id: Optional[str]) -> Dict[str, Any]:
         "errors_encountered": []
     }
 
-def setup_output_directories(app_config: AppConfig, run_id: str, base_file_path: str) -> Tuple[str, str, str]:
+def setup_output_directories(app_config: AppConfig, run_id: str, base_file_path: str, pipeline_mode: str) -> Tuple[str, str, str]:
     """
     Sets up the output directories for the pipeline run.
     Returns paths for the run-specific output, LLM context, and LLM requests directories.
@@ -105,7 +105,7 @@ def setup_output_directories(app_config: AppConfig, run_id: str, base_file_path:
         project_root_dir_local = os.path.dirname(os.path.abspath(base_file_path))
         output_base_dir_abs = os.path.join(project_root_dir_local, output_base_dir_abs)
         
-    run_folder_name = f"{run_id}_{app_config.pipeline_mode}"
+    run_folder_name = f"{pipeline_mode}_{run_id}"
     run_output_dir = os.path.join(output_base_dir_abs, run_folder_name)
     os.makedirs(run_output_dir, exist_ok=True)
     
@@ -208,6 +208,15 @@ def initialize_dataframe_columns(df: pd.DataFrame, app_config: AppConfig) -> pd.
             'is_shop': None,
             'is_shop_confidence': None,
             'is_shop_evidence': ''
+        }
+
+    elif app_config.pipeline_mode == 'mechanical_engineering_detection':
+        required_cols = {
+            'ScrapingStatus': '',
+            'is_relevant_industry': None,
+            'is_very_good_prospect': None,
+            'reasoning': '',
+            'primary_business_focus': ''
         }
 
     for col, default_val in required_cols.items():
