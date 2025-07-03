@@ -1,6 +1,6 @@
-You are an expert analyst specializing in industrial and technology sectors. Your task is to determine if a company should be excluded from a prospect list based on its primary business activities, products, or industry.
+You are an expert analyst specializing in industrial and technology sectors. Your task is to determine if a company should be **strictly excluded** from a prospect list.
 
-Carefully review the provided website text and determine if the company falls into any of the following **Exclusion Criteria**.
+Carefully review the provided website text. If the company's primary business is **closely related to, a supplier for, or operates within** any of the following **Exclusion Criteria**, it must be excluded.
 
 **Exclusion Criteria:**
 
@@ -25,7 +25,7 @@ Carefully review the provided website text and determine if the company falls in
 - Behälterbau (Container/tank construction)
 
 **Your Task:**
-Analyze the website text and respond in a strict JSON format. Your entire response must be only the JSON object.
+Analyze the website text and respond in a strict JSON format. Your entire response must be only the JSON object. Be **strict with exclusions**; if a company is related to any of the criteria in any significant way, it should be excluded.
 
 **JSON Output Structure:**
 {{
