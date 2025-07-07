@@ -13,9 +13,10 @@ from collections import Counter
 
 from src.core.config import AppConfig
 from src.llm_clients.gemini_client import GeminiClient
-from src.scraper import scrape_website
+from src.scraper.scraper_logic import scrape_website
 from src.extractors.llm_tasks.generic_classification_task import perform_classification
 from src.utils.helpers import log_row_failure, sanitize_filename_component
+from src.caching.cache_manager import CacheManager
 from src.processing.url_processor import process_input_url
 
 logger = logging.getLogger(__name__)
@@ -36,7 +37,8 @@ def _run_classification_flow(
     index: Any,
     company_name_str: str,
     classification_profile: Dict[str, Any],
-    scraped_text: Optional[str] = None
+    scraped_text: Optional[str] = None,
+    cache_manager: Optional[CacheManager] = None
 ) -> Tuple[Dict[str, Any], Optional[str]]:
     """
     Executes a generic classification flow for a single row.
@@ -69,7 +71,8 @@ def _run_classification_flow(
         llm_context_dir=os.path.join(run_output_dir, app_config.llm_context_subdir),
         llm_requests_dir=os.path.join(run_output_dir, "llm_requests"),
         file_identifier_prefix=llm_file_prefix,
-        classification_profile=classification_profile
+        classification_profile=classification_profile,
+        cache_manager=cache_manager
     )
 
     if classification_result:
@@ -93,7 +96,8 @@ def execute_pipeline_flow(
     llm_requests_dir: str,
     run_id: str,
     failure_writer: Any,
-    run_metrics: Dict[str, Any]
+    run_metrics: Dict[str, Any],
+    cache_manager: CacheManager
 ) -> PipelineOutput:
     """
     Executes the core data processing flow of the pipeline.
@@ -151,12 +155,26 @@ def execute_pipeline_flow(
                 positive_keywords = app_config.CLASSIFICATION_PROFILES["positive_criteria_detection"].get("target_keywords", [])
                 target_keywords = list(set(exclusion_keywords + positive_keywords))
 
-            _, scraper_status, _, collected_summary_text = asyncio.run(
-                scrape_website(
-                    processed_url, run_output_dir, company_name_str,
-                    globally_processed_urls, index, target_keywords=target_keywords
+            cached_result = cache_manager.get_scrape_result(processed_url)
+            
+            if cached_result:
+                scraper_status = cached_result['status']
+                collected_summary_text = cached_result['content']
+                logger.info(f"{log_identifier} Found cached scrape result with status: {scraper_status}")
+                if scraper_status != "Success":
+                    df.at[index, 'ScrapingStatus'] = scraper_status
+                    rows_failed_count += 1
+                    continue
+            else:
+                _, scraper_status, _, collected_summary_text = asyncio.run(
+                    scrape_website(
+                        processed_url, run_output_dir, company_name_str,
+                        globally_processed_urls, index, target_keywords=target_keywords
+                    )
                 )
-            )
+                if scraper_status == "Success" or app_config.cache_failed_scrapes:
+                    cache_manager.set_scrape_result(processed_url, scraper_status, collected_summary_text)
+
             df.at[index, 'ScrapingStatus'] = scraper_status
 
             if scraper_status != "Success" or not collected_summary_text:
@@ -181,7 +199,8 @@ def execute_pipeline_flow(
                     processed_url=processed_url, row_series=row, app_config=app_config,
                     gemini_client=gemini_client, run_output_dir=run_output_dir,
                     log_identifier=log_identifier, index=index, company_name_str=company_name_str,
-                    classification_profile=exclusion_profile, scraped_text=collected_summary_text
+                    classification_profile=exclusion_profile, scraped_text=collected_summary_text,
+                    cache_manager=cache_manager
                 )
                 if exclusion_result:
                     for col, val in exclusion_result.items(): df.at[index, col] = val
@@ -197,7 +216,8 @@ def execute_pipeline_flow(
                     processed_url=processed_url, row_series=row, app_config=app_config,
                     gemini_client=gemini_client, run_output_dir=run_output_dir,
                     log_identifier=log_identifier, index=index, company_name_str=company_name_str,
-                    classification_profile=positive_profile, scraped_text=collected_summary_text
+                    classification_profile=positive_profile, scraped_text=collected_summary_text,
+                    cache_manager=cache_manager
                 )
                 if positive_result:
                     for col, val in positive_result.items(): df.at[index, col] = val
@@ -211,7 +231,8 @@ def execute_pipeline_flow(
                     processed_url=processed_url, row_series=row, app_config=app_config,
                     gemini_client=gemini_client, run_output_dir=run_output_dir,
                     log_identifier=log_identifier, index=index, company_name_str=company_name_str,
-                    classification_profile=classification_profile, scraped_text=collected_summary_text
+                    classification_profile=classification_profile, scraped_text=collected_summary_text,
+                    cache_manager=cache_manager
                 )
                 if classification_result:
                     for col, val in classification_result.items(): df.at[index, col] = val

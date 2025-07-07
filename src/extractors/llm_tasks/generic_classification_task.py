@@ -1,11 +1,14 @@
 import json
+import os
 import logging
 from typing import Dict, Any, Optional
+import hashlib
 
 from google.generativeai import types as genai_types
 from src.llm_clients.gemini_client import GeminiClient
 from src.core.config import AppConfig
 from src.utils.llm_processing_helpers import save_llm_interaction
+from src.caching.cache_manager import CacheManager
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +20,8 @@ def perform_classification(
     llm_context_dir: str,
     llm_requests_dir: str,
     file_identifier_prefix: str,
-    classification_profile: Dict[str, Any]
+    classification_profile: Dict[str, Any],
+    cache_manager: Optional[CacheManager] = None
 ) -> Optional[Dict[str, Any]]:
     """
     Uses the LLM to perform a generic classification based on a profile.
@@ -49,6 +53,18 @@ def perform_classification(
 
     prompt = prompt_template.format(website_text=scraped_text[:app_config.LLM_MAX_INPUT_CHARS_FOR_SUMMARY])
     
+    text_hash = hashlib.md5(scraped_text.encode('utf-8')).hexdigest()
+    prompt_name = os.path.splitext(os.path.basename(prompt_path))[0]
+
+    if cache_manager:
+        cached_result = cache_manager.get_llm_result(text_hash, prompt_name)
+        if cached_result:
+            logger.info(f"Found cached LLM result for URL '{original_url}' and prompt '{prompt_name}'.")
+            try:
+                return json.loads(cached_result)
+            except json.JSONDecodeError:
+                logger.error(f"Failed to parse cached JSON response for URL '{original_url}'.")
+
     response_obj = None
     try:
         generation_config = genai_types.GenerationConfig(
@@ -78,6 +94,8 @@ def perform_classification(
 
         if response_obj and response_obj.text:
             cleaned_response = response_obj.text.strip().replace('```json', '').replace('```', '').strip()
+            if cache_manager:
+                cache_manager.set_llm_result(text_hash, prompt_name, cleaned_response)
             return json.loads(cleaned_response)
         else:
             logger.error(f"No valid text response for classification for URL '{original_url}'.")

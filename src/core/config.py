@@ -18,7 +18,7 @@ The configuration covers various aspects of the pipeline, including:
 """
 import os
 from dotenv import load_dotenv
-from typing import List, Optional
+from typing import List, Optional, Any
 
 # Environment variables are now loaded exclusively in the main_pipeline.py entry point.
 # This ensures a single, predictable source of configuration truth.
@@ -186,7 +186,7 @@ class AppConfig:
         },
     }
 
-    def __init__(self):
+    def __init__(self, cli_args: Optional[Any] = None):
         # Add new profile for movepay
         self.INPUT_COLUMN_PROFILES["movepay_profile"] = {
             "firma": "CompanyName",
@@ -194,7 +194,6 @@ class AppConfig:
         }
         """
         Initializes the AppConfig instance.
-
         Loads all configuration parameters from environment variables using `os.getenv()`.
         If an environment variable is not set for a particular configuration, a
         predefined default value is used. It also handles type conversions for
@@ -312,8 +311,11 @@ class AppConfig:
         self.enable_dns_error_fallbacks: bool = os.getenv('ENABLE_DNS_ERROR_FALLBACKS', 'True').lower() == 'true'
 
         # --- Data Handling & Input Profiling ---
-        self.input_excel_file_path: str = os.getenv('INPUT_EXCEL_FILE_PATH', 'data_to_be_inputed.xlsx')  # Relative to project root
-        self.input_file_profile_name: str = os.getenv("INPUT_FILE_PROFILE_NAME", "movepay_profile")
+        cli_input_file = getattr(cli_args, 'input_file', None) if cli_args else None
+        self.input_excel_file_path: str = cli_input_file if cli_input_file is not None else os.getenv('INPUT_EXCEL_FILE_PATH', 'data_to_be_inputed.xlsx')
+
+        cli_profile = getattr(cli_args, 'profile', None) if cli_args else None
+        self.input_file_profile_name: str = cli_profile if cli_profile is not None else os.getenv("INPUT_FILE_PROFILE_NAME", "movepay_profile")
         self.csv_delimiter: str = os.getenv("CSV_DELIMITER", ";")
         self.output_excel_file_name_template: str = os.getenv('OUTPUT_EXCEL_FILE_NAME_TEMPLATE', 'Pipeline_Summary_Report_{run_id}.xlsx')
         self.PATH_TO_GOLDEN_PARTNERS_DATA: str = os.getenv('PATH_TO_GOLDEN_PARTNERS_DATA', 'data/kunden_golden_standard.xlsx')
@@ -321,7 +323,8 @@ class AppConfig:
         # --- Row Processing Range Configuration ---
         self.skip_rows_config: Optional[int] = None
         self.nrows_config: Optional[int] = None
-        raw_row_range: Optional[str] = os.getenv('ROW_PROCESSING_RANGE', "")
+        cli_range = getattr(cli_args, 'range', None) if cli_args else None
+        raw_row_range: Optional[str] = cli_range if cli_range is not None else os.getenv('ROW_PROCESSING_RANGE', "")
 
         if raw_row_range:
             raw_row_range = raw_row_range.strip()
@@ -370,7 +373,11 @@ class AppConfig:
         self.console_log_level: str = os.getenv('CONSOLE_LOG_LEVEL', 'WARNING').upper()
 
         # --- Pipeline Execution Configuration ---
-        self.pipeline_mode: str = os.getenv('PIPELINE_MODE', 'two_stage_classification')
+        cli_mode = getattr(cli_args, 'mode', None) if cli_args else None
+        self.pipeline_mode: str = cli_mode if cli_mode is not None else os.getenv('PIPELINE_MODE', 'two_stage_classification')
+        
+        cli_suffix = getattr(cli_args, 'suffix', None) if cli_args else None
+        self.run_id_suffix: Optional[str] = cli_suffix if cli_suffix is not None else os.getenv('RUN_ID_SUFFIX', None)
 
         # --- Classification Profiles ---
         self.CLASSIFICATION_PROFILES = {
@@ -439,3 +446,13 @@ class AppConfig:
         self.enable_slack_notifications: bool = os.getenv('ENABLE_SLACK_NOTIFICATIONS', 'False').lower() == 'true'
         self.slack_bot_token: Optional[str] = os.getenv('SLACK_BOT_TOKEN')
         self.slack_channel_id: Optional[str] = os.getenv('SLACK_CHANNEL_ID')
+
+        # --- Caching Configuration ---
+        self.cache_base_dir: str = os.getenv('CACHE_BASE_DIR', 'cache')
+        self.cache_failed_scrapes: bool = os.getenv('CACHE_FAILED_SCRAPES', 'True').lower() == 'true'
+        cli_resume_from = getattr(cli_args, 'resume_from', None) if cli_args else None
+        self.resume_from_run_id: Optional[str] = cli_resume_from if cli_resume_from is not None else os.getenv('RESUME_FROM_RUN_ID', None)
+
+    def to_dict(self):
+        """Serializes the config object to a dictionary."""
+        return {key: value for key, value in self.__dict__.items() if not key.startswith('_')}

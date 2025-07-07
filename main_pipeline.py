@@ -4,6 +4,7 @@ import csv
 import logging
 import os
 import time
+import argparse
 
 from dotenv import load_dotenv
 
@@ -11,6 +12,7 @@ from src.data_handling.loader import load_and_preprocess_data
 from src.llm_clients.gemini_client import GeminiClient
 from src.core.logging_config import setup_logging
 from src.core.config import AppConfig
+from src.caching.cache_manager import CacheManager
 from src.utils.helpers import (
     generate_run_id,
     resolve_path,
@@ -22,6 +24,8 @@ from src.utils.helpers import (
 from src.reporting.metrics_manager import write_run_metrics
 from src.processing.pipeline_flow import execute_pipeline_flow
 from src.reporting.main_report_orchestrator import generate_all_reports
+import shutil
+import json
 
 # Explicitly load the .env file from the project root to ensure consistency.
 # This is the single source of truth for environment-based configuration.
@@ -29,7 +33,6 @@ dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
 load_dotenv(dotenv_path=dotenv_path)
 
 logger = logging.getLogger(__name__)
-app_config: AppConfig = AppConfig()
 
 BASE_FILE_PATH_FOR_RESOLVE = __file__
 
@@ -38,12 +41,44 @@ def main() -> None:
     Main entry point for the phone validation pipeline.
     Orchestrates the entire process from data loading to report generation.
     """
+    parser = argparse.ArgumentParser(description="Run the classification pipeline with specified configurations.")
+    parser.add_argument('-i', '--input-file', type=str, help='Path to the input data file.')
+    parser.add_argument('-r', '--range', type=str, help='Row range to process (e.g., "1-100", "50-", "-200").')
+    parser.add_argument('--resume-from', type=str, help='Run ID to resume scraped content from.')
+    parser.add_argument('-s', '--suffix', type=str, help='Suffix to append to the run ID.')
+    parser.add_argument('-m', '--mode', type=str, help='Pipeline mode to run (e.g., "shop_detection").')
+    parser.add_argument('-p', '--profile', type=str, help='Input file column profile name.')
+    
+    args = parser.parse_args()
+    app_config = AppConfig(cli_args=args)
+    cache_manager = CacheManager(cache_base_dir=app_config.cache_base_dir)
+
+    if app_config.resume_from_run_id:
+        logger.info(f"Attempting to resume from run ID: {app_config.resume_from_run_id}")
+        source_run_dir = os.path.join(app_config.output_base_dir, app_config.resume_from_run_id, 'scraped_content')
+        if os.path.isdir(source_run_dir):
+            for item in os.listdir(source_run_dir):
+                s = os.path.join(source_run_dir, item)
+                d = os.path.join(cache_manager.scraped_content_dir, item)
+                if os.path.isdir(s):
+                    shutil.copytree(s, d, dirs_exist_ok=True)
+                else:
+                    shutil.copy2(s, d)
+            logger.info(f"Successfully copied scraped content from {app_config.resume_from_run_id} to cache.")
+        else:
+            logger.warning(f"Could not find scraped_content directory for run ID {app_config.resume_from_run_id}. Proceeding without resuming.")
+
     pipeline_start_time = time.time()
     
-    run_id = generate_run_id()
+    run_id = generate_run_id(suffix=app_config.run_id_suffix)
     run_metrics: Dict[str, Any] = initialize_run_metrics(run_id)
 
     run_output_dir, llm_context_dir, llm_requests_dir = setup_output_directories(app_config, run_id, BASE_FILE_PATH_FOR_RESOLVE, app_config.pipeline_mode)
+
+    config_save_path = os.path.join(run_output_dir, 'run_config.json')
+    with open(config_save_path, 'w') as f:
+        json.dump(app_config.to_dict(), f, indent=4)
+    logger.info(f"Run configuration saved to {config_save_path}")
 
     log_file_name = f"pipeline_run_{run_id}.log"
     log_file_path = os.path.join(run_output_dir, log_file_name)
@@ -139,7 +174,7 @@ def main() -> None:
         logger.info("Starting core pipeline processing flow...")
         (df, attrition_data_list, row_level_failure_counts
         ) = execute_pipeline_flow(
-            df=df,
+            df,
             app_config=app_config,
             gemini_client=gemini_client,
             run_output_dir=run_output_dir,
@@ -147,7 +182,8 @@ def main() -> None:
             llm_requests_dir=llm_requests_dir,
             run_id=run_id,
             failure_writer=failure_writer,
-            run_metrics=run_metrics
+            run_metrics=run_metrics,
+            cache_manager=cache_manager
         )
         run_metrics["data_processing_stats"]["row_level_failure_summary"] = row_level_failure_counts
         logger.info("Core pipeline processing flow finished.")
